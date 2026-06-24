@@ -555,6 +555,12 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
   <div class="wrap">
 
     <!-- ANNOUNCEMENTS -->
+    <!-- Birthday announcements (auto-generated) -->
+    <div id="bdayBanner" style="display:none;margin:12px 16px 0;background:linear-gradient(135deg,#ff6b6b,#feca57);border-radius:18px;padding:16px;box-shadow:0 4px 18px rgba(255,107,107,.3)">
+      <div style="font-size:1.1rem;font-weight:900;color:#fff;margin-bottom:6px">🎂 عيد ميلاد سعيد!</div>
+      <div id="bdayList" style="color:#fff;font-size:0.84rem;line-height:1.8"></div>
+    </div>
+
     <div id="sec-ann" class="sec on"><div class="page" id="annList"></div></div>
 
     <!-- LEADERS -->
@@ -1291,6 +1297,7 @@ let leaders=[];
 onSnapshot(query(LC,orderBy('createdAt','asc')),snap=>{
   leaders=snap.docs.map(d=>({id:d.id,...d.data()}));
   renderLeadersPub();renderLeadersAdm();renderChips();renderContactDirect();
+  checkBirthdays();
 });
 function renderChips(){
   const el=document.getElementById('leaderChips');
@@ -1456,6 +1463,7 @@ let members=[];
 onSnapshot(MC,snap=>{
   members=snap.docs.map(d=>({id:d.id,...d.data()}));
   renderPubMems();renderAdmMems();renderRank();
+  checkBirthdays();
   // Update header counter
   const el=document.getElementById('cntMembers');
   if(el) animateCount(el, snap.size);
@@ -1530,6 +1538,42 @@ function calcPoints(m){
   const abs=(m.absence||0)*2;
   return rating+badges+courses+att-abs;
 }
+function checkBirthdays(){
+  const banner=document.getElementById('bdayBanner');
+  const list=document.getElementById('bdayList');
+  if(!banner||!list)return;
+  const now=new Date();
+  const todayDay=now.getDate();
+  const todayMonth=now.getMonth()+1;
+  // Check members + leaders for today's birthday
+  const allPeople=[...members,...leaders];
+  const todayBdays=allPeople.filter(p=>{
+    if(!p.dob)return false;
+    // Support formats: DD/MM/YYYY or YYYY-MM-DD
+    let day,month;
+    if(p.dob.includes('/')){
+      const parts=p.dob.split('/');
+      day=parseInt(parts[0]);month=parseInt(parts[1]);
+    }else if(p.dob.includes('-')){
+      const parts=p.dob.split('-');
+      day=parseInt(parts[2]);month=parseInt(parts[1]);
+    }else return false;
+    return day===todayDay && month===todayMonth;
+  });
+  if(!todayBdays.length){banner.style.display='none';return;}
+  banner.style.display='block';
+  list.innerHTML=todayBdays.map(p=>{
+    const isAdmin=document.getElementById('sec-admin')&&document.getElementById('admPanel')&&document.getElementById('admPanel').style.display!=='none';
+    const waBtn=`<button onclick="sendBdayWA('${esc(p.name)}','${esc(p.whatsapp||p.phone||'')}')" style="background:rgba(255,255,255,.25);border:none;border-radius:20px;padding:4px 12px;color:#fff;font-family:Cairo,sans-serif;font-size:0.75rem;font-weight:700;cursor:pointer;margin-right:8px">📲 تهنئة واتساب</button>`;
+    return `<div style="margin-bottom:6px">🎉 <b>${esc(p.name)}</b> — كل عام وأنت بخير يا كشاف! ${waBtn}</div>`;
+  }).join('');
+}
+window.sendBdayWA=function(name,phone){
+  if(!phone){toast('لا يوجد رقم واتساب لهذا الشخص','err');return;}
+  const num=phone.replace(/^0/,'20');
+  const msg=encodeURIComponent(`🎂 كل عام وأنت بخير يا ${name}!\nمن مجموعة أسد البحار للكشافة البحرية 🦁⚓`);
+  window.open(`https://wa.me/${num}?text=${msg}`,'_blank');
+};
 function renderRank(){
   const el=document.getElementById('rankList');
   if(!el)return;
@@ -1632,7 +1676,7 @@ function renderAdmMems(){
           <div class="pf"><label>رقم الموبايل</label><input id="ph${m.id}" type="tel" value="${esc(m.phone||'')}" placeholder="01xxxxxxxxx"/></div>
           <div class="pf"><label>واتساب (مع كود الدولة)</label><input id="wa${m.id}" type="tel" value="${esc(m.whatsapp||'')}" placeholder="201xxxxxxxxx"/></div>
           <div class="pf full"><label>الرقم القومي</label><input id="nid${m.id}" type="text" value="${esc(m.nationalId||'')}" placeholder="14 رقم" maxlength="14"/></div><div class="pf"><label>العمر</label><input id="age${m.id}" type="number" value="${esc(m.age||'')}" placeholder="بالسنوات"/></div>
-          <div class="pf"><label>تاريخ الميلاد</label><input id="dob${m.id}" type="date" value="${esc(m.dob||'')}"/></div>
+          <div class="pf"><label>تاريخ الميلاد</label><input id="dob${m.id}" type="text" inputmode="numeric" placeholder="مثال: 15/06/2010" value="${esc(m.dob||'')}"/></div>
           <div class="pf"><label>المرحلة الدراسية</label><select id="gr${m.id}">${['<option value="">اختر...</option>',...GRADES.map(g=>`<option ${m.grade===g?'selected':''}>${g}</option>`)].join('')}</select></div>
           <div class="pf"><label>الصفة في المجموعة</label><select id="rol${m.id}">${['<option value="">اختر...</option>',...rolesList.map(r=>`<option ${m.role===r?'selected':''}>${r}</option>`)].join('')}</select></div>
           <div class="pf"><label>اسم المجموعة</label><input id="grp${m.id}" type="text" value="${esc(m.group||'')}" placeholder="اسم المجموعة"/></div>
